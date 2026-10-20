@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS sport_activities (
     distance_meters NUMERIC(12,2),
     end_date TIMESTAMP NOT NULL,
     comment TEXT,
+    source TEXT NOT NULL DEFAULT 'simulated',
     CONSTRAINT fk_sport_activity_employee
         FOREIGN KEY (employee_id)
         REFERENCES rh_employees(employee_id)
@@ -52,3 +53,4 @@ VALUES
     ('walking_running_max_km', 15, 'Distance maximum Marche/Running'),
     ('bike_other_max_km', 25, 'Distance maximum Velo/Trottinette/Autres')
 ON CONFLICT (parameter_name) DO NOTHING;
+

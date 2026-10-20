@@ -6,19 +6,28 @@ import psycopg
 from dotenv import load_dotenv
 
 
- # CONFIGURATION
- 
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
 load_dotenv()
 
-# Seed fixe pour pouvoir reproduire la même simulation.
 random.seed(42)
 
-END_DATE = datetime(2026, 10, 19, 23, 59, 59)
+END_DATE = datetime.now().replace(
+    hour=23,
+    minute=59,
+    second=59,
+    microsecond=0,
+)
+
 START_DATE = END_DATE - timedelta(days=365)
 
 
- # PARAMETRES PAR SPORT
- 
+# ============================================================
+# PARAMETRES PAR SPORT
+# ============================================================
+
 SPORT_RULES = {
     "Running": {
         "duration": (20, 120),
@@ -36,8 +45,6 @@ SPORT_RULES = {
         "duration": (60, 300),
         "distance": (10000, 60000),
     },
-
-    # Pour ces sports, une distance n'est pas pertinente.
     "Tennis": {
         "duration": (45, 150),
         "distance": None,
@@ -96,19 +103,30 @@ COMMENTS = [
 ]
 
 
- # FONCTIONS
- 
+# ============================================================
+# FONCTIONS
+# ============================================================
+
 def random_datetime():
+
     total_seconds = int(
         (END_DATE - START_DATE).total_seconds()
     )
 
-    offset = random.randint(0, total_seconds)
+    offset = random.randint(
+        0,
+        total_seconds,
+    )
 
-    return START_DATE + timedelta(seconds=offset)
+    return START_DATE + timedelta(
+        seconds=offset
+    )
 
 
-def create_activity(employee_id, sport):
+def create_activity(
+    employee_id,
+    sport,
+):
 
     rule = SPORT_RULES[sport]
 
@@ -131,7 +149,9 @@ def create_activity(employee_id, sport):
             rule["distance"][1],
         )
 
-    comment = random.choice(COMMENTS)
+    comment = random.choice(
+        COMMENTS
+    )
 
     return (
         employee_id,
@@ -140,17 +160,32 @@ def create_activity(employee_id, sport):
         distance,
         end_date,
         comment,
+        "simulated",
     )
 
 
- # CONNEXION POSTGRESQL
- 
+# ============================================================
+# CONNEXION POSTGRESQL
+# ============================================================
+
 connection = psycopg.connect(
-    host=os.getenv("POSTGRES_HOST", "localhost"),
-    port=os.getenv("POSTGRES_PORT", "5433"),
-    dbname=os.getenv("POSTGRES_DB"),
-    user=os.getenv("POSTGRES_USER"),
-    password=os.getenv("POSTGRES_PASSWORD"),
+    host=os.getenv(
+        "POSTGRES_HOST",
+        "localhost",
+    ),
+    port=os.getenv(
+        "POSTGRES_PORT",
+        "5433",
+    ),
+    dbname=os.getenv(
+        "POSTGRES_DB"
+    ),
+    user=os.getenv(
+        "POSTGRES_USER"
+    ),
+    password=os.getenv(
+        "POSTGRES_PASSWORD"
+    ),
 )
 
 
@@ -172,8 +207,13 @@ try:
         athletes = cursor.fetchall()
 
 
-    print("======= GENERATION DES ACTIVITES =======")
-    print(f"Salariés sportifs : {len(athletes)}")
+    print(
+        "======= GENERATION DES ACTIVITES ======="
+    )
+
+    print(
+        f"Salariés sportifs : {len(athletes)}"
+    )
 
 
     activities = []
@@ -182,21 +222,30 @@ try:
     for employee_id, sport in athletes:
 
         if sport not in SPORT_RULES:
+
             raise ValueError(
                 f"Sport non pris en charge : {sport}"
             )
 
-        # Environ 30 % des salariés restent sous le seuil
-        # des 15 activités annuelles.
+
         if random.random() < 0.30:
-            activity_count = random.randint(6, 14)
 
-        # Les autres ont une pratique plus régulière.
+            activity_count = random.randint(
+                6,
+                14,
+            )
+
         else:
-            activity_count = random.randint(25, 40)
+
+            activity_count = random.randint(
+                25,
+                40,
+            )
 
 
-        for _ in range(activity_count):
+        for _ in range(
+            activity_count
+        ):
 
             activities.append(
                 create_activity(
@@ -206,7 +255,6 @@ try:
             )
 
 
-    # On trie chronologiquement les activités.
     activities.sort(
         key=lambda activity: activity[1]
     )
@@ -218,15 +266,14 @@ try:
 
     with connection.cursor() as cursor:
 
-        # Cette table contient uniquement notre historique
-        # simulé pour le moment.
+        # Supprime uniquement les données simulées.
+        # Les activités live sont conservées.
         cursor.execute(
             """
-            TRUNCATE TABLE sport_activities
-            RESTART IDENTITY;
+            DELETE FROM sport_activities
+            WHERE source = 'simulated';
             """
         )
-
 
         cursor.executemany(
             """
@@ -236,9 +283,18 @@ try:
                 sport_type,
                 distance_meters,
                 end_date,
-                comment
+                comment,
+                source
             )
-            VALUES (%s, %s, %s, %s, %s, %s);
+            VALUES (
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s
+            );
             """,
             activities,
         )
@@ -254,7 +310,36 @@ try:
     with connection.cursor() as cursor:
 
         cursor.execute(
-            "SELECT COUNT(*) FROM sport_activities;"
+            """
+            SELECT COUNT(*)
+            FROM sport_activities
+            WHERE source = 'simulated';
+            """
+        )
+
+        simulated_total = (
+            cursor.fetchone()[0]
+        )
+
+
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM sport_activities
+            WHERE source = 'live';
+            """
+        )
+
+        live_total = (
+            cursor.fetchone()[0]
+        )
+
+
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM sport_activities;
+            """
         )
 
         total = cursor.fetchone()[0]
@@ -262,30 +347,43 @@ try:
 
         cursor.execute(
             """
-            SELECT COUNT(DISTINCT employee_id)
-            FROM sport_activities;
+            SELECT MIN(start_date),
+                   MAX(start_date)
+            FROM sport_activities
+            WHERE source = 'simulated';
             """
         )
 
-        employees = cursor.fetchone()[0]
-
-
-        cursor.execute(
-            """
-            SELECT MIN(start_date), MAX(start_date)
-            FROM sport_activities;
-            """
+        min_date, max_date = (
+            cursor.fetchone()
         )
-
-        min_date, max_date = cursor.fetchone()
 
 
     print()
-    print("======= GENERATION TERMINEE =======")
-    print(f"Activités générées : {total}")
-    print(f"Salariés concernés : {employees}")
-    print(f"Première activité : {min_date}")
-    print(f"Dernière activité : {max_date}")
+
+    print(
+        "======= GENERATION TERMINEE ======="
+    )
+
+    print(
+        f"Activités simulées : {simulated_total}"
+    )
+
+    print(
+        f"Activités live conservées : {live_total}"
+    )
+
+    print(
+        f"Total en base : {total}"
+    )
+
+    print(
+        f"Première activité simulée : {min_date}"
+    )
+
+    print(
+        f"Dernière activité simulée : {max_date}"
+    )
 
 
 finally:

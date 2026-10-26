@@ -68,7 +68,7 @@ Après nettoyage :
 - 161 salariés présents dans les deux sources ;
 - 95 salariés avec une pratique sportive renseignée ;
 - 2 434 activités simulées sur les 12 derniers mois ;
-- les activités ajoutées pendant les tests live sont conservées séparément avec `source = live`.
+- les activités ajoutées pendant les tests live sont conservées avec `source = live`.
 
 Validation des déplacements :
 
@@ -83,22 +83,48 @@ Depuis PowerShell :
 
 ```powershell
 cd D:\Portfolio_Hassna\05_Sport_Data_Infrastructure
-
 .\.venv\Scripts\Activate.ps1
-
 docker compose up -d
 ```
 
-Pour lancer le monitoring Prefect dans un autre terminal :
+### Terminal 1 · Prefect
 
 ```powershell
 prefect server start
 ```
 
-Puis lancer le pipeline :
+L’interface de monitoring est disponible sur :
+
+```text
+http://127.0.0.1:4200
+```
+
+### Terminal 2 · Pipeline automatisé
 
 ```powershell
-python orchestration\pipeline.py
+cd D:\Portfolio_Hassna\05_Sport_Data_Infrastructure
+.\.venv\Scripts\Activate.ps1
+python orchestration\serve_pipeline.py
+```
+
+Le déploiement :
+
+```text
+sport-data-pipeline/daily-sport-data-pipeline
+```
+
+est planifié toutes les **24 heures**, tant que le service Prefect est actif.
+
+Pour vérifier le déploiement :
+
+```powershell
+prefect deployment ls
+```
+
+Pour déclencher immédiatement une exécution :
+
+```powershell
+prefect deployment run "sport-data-pipeline/daily-sport-data-pipeline"
 ```
 
 Le pipeline exécute successivement :
@@ -112,6 +138,12 @@ audit
 → règles métier
 → tests qualité
 → monitoring
+```
+
+Un lancement manuel reste également possible avec :
+
+```powershell
+python orchestration\pipeline.py
 ```
 
 ## Qualité
@@ -147,13 +179,13 @@ Résultat actuel :
 python src\update_bonus_rate.py
 ```
 
-Le script demande simplement :
+Le script demande :
 
 ```text
 Nouveau taux de prime en % :
 ```
 
-Exemple de démonstration :
+Exemple pour la démonstration :
 
 ```text
 5 % → 8 %
@@ -161,7 +193,7 @@ Exemple de démonstration :
 
 Après actualisation de Power BI, le coût total des primes est recalculé.
 
-À la fin du test, remettre le taux à :
+À la fin du test, remettre :
 
 ```text
 5 %
@@ -170,7 +202,7 @@ Après actualisation de Power BI, le coût total des primes est recalculé.
 ### Ajouter une nouvelle course
 
 ```powershell
-python src\add_live_activity.py --employee-id <ID_SALARIE> --sport Running --distance 5200 --duration 30 --comment "Course live du POC"
+python src\add_live_activity.py --employee-id 17027 --sport Running --distance 5200 --duration 30 --comment "Course live du POC"
 ```
 
 Cette action :
@@ -182,9 +214,11 @@ ajoute l'activité dans PostgreSQL
 → rend l'activité visible dans Power BI après actualisation
 ```
 
+Dans Power BI, le filtre `source` permet d’afficher directement les activités `live`.
+
 ## Reporting Power BI
 
-Le fichier Power BI présente les indicateurs utilisés pour le POC :
+Le fichier Power BI présente :
 
 - coût total des primes ;
 - salariés éligibles à la prime ;
@@ -195,7 +229,7 @@ Le fichier Power BI présente les indicateurs utilisés pour le POC :
 - détail des activités ;
 - distinction entre données `simulated` et `live`.
 
-Le reporting est actualisable après une modification du taux ou l'ajout d'une nouvelle activité.
+Le reporting est actualisable après une modification du taux ou l’ajout d’une nouvelle activité.
 
 ## Sécurité
 
@@ -220,8 +254,7 @@ Le POC permet aujourd’hui de :
 ```text
 charger et contrôler les données
 → calculer les avantages
-→ rejouer le pipeline
-→ surveiller son exécution avec Prefect
+→ automatiser et surveiller le pipeline avec Prefect
 → modifier les paramètres métier
 → injecter une activité live
 → publier cette activité dans Slack

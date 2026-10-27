@@ -5,3 +5,4 @@ psycopg[binary]
 requests
 pytest
 prefect
+SQLAlchemy==2.0.49

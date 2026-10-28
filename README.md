@@ -130,7 +130,8 @@ prefect deployment run "sport-data-pipeline/daily-sport-data-pipeline"
 Le pipeline exécute successivement :
 
 ```text
-audit
+initialisation PostgreSQL
+→ audit
 → nettoyage
 → chargement PostgreSQL
 → validation des trajets
@@ -233,7 +234,7 @@ Le reporting est actualisable après une modification du taux ou l’ajout d’u
 
 ## Sécurité
 
-Les données RH et les secrets ne sont pas stockés dans Git.
+Les données RH et les secrets ne sont pas stockés dans Git. Les fichiers sources fournis pour la mission restent localement dans `data/raw/` et sont exclus du dépôt.
 
 Le fichier `.env` contient localement :
 

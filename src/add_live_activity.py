@@ -106,8 +106,9 @@ def main():
             "SLACK_WEBHOOK_URL absente du fichier .env"
         )
 
-    start_date = datetime.now()
-    end_date = start_date + timedelta(
+    end_date = datetime.now()
+
+    start_date = end_date - timedelta(
         minutes=args.duration
     )
 

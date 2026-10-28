@@ -98,6 +98,25 @@ try:
                 annual_gross_salary = EXCLUDED.annual_gross_salary,
                 contract_type = EXCLUDED.contract_type,
                 paid_leave_days = EXCLUDED.paid_leave_days,
+                commute_distance_km =
+                    CASE
+                        WHEN rh_employees.home_address
+                            IS DISTINCT FROM EXCLUDED.home_address
+                        OR rh_employees.commute_mode
+                            IS DISTINCT FROM EXCLUDED.commute_mode
+                        THEN NULL
+                        ELSE rh_employees.commute_distance_km
+                    END,
+
+                commute_is_valid =
+                    CASE
+                        WHEN rh_employees.home_address
+                            IS DISTINCT FROM EXCLUDED.home_address
+                        OR rh_employees.commute_mode
+                            IS DISTINCT FROM EXCLUDED.commute_mode
+                        THEN NULL
+                        ELSE rh_employees.commute_is_valid
+                    END,
                 home_address = EXCLUDED.home_address,
                 commute_mode = EXCLUDED.commute_mode;
             """,

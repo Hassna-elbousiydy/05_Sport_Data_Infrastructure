@@ -83,6 +83,41 @@ def run_python_script(script_path: str):
 # ============================================================
 
 @task(retries=1, retry_delay_seconds=5)
+def initialize_database():
+
+    logger = get_run_logger()
+
+    sql_files = [
+        "01_create_schema.sql",
+        "03_activity_source.sql",
+        "02_business_rules.sql",
+        "04_reporting_views.sql",
+    ]
+
+    with get_connection() as connection:
+        with connection.cursor() as cursor:
+
+            for filename in sql_files:
+
+                sql = (
+                    ROOT / "sql" / filename
+                ).read_text(
+                    encoding="utf-8-sig"
+                )
+
+                cursor.execute(
+                    sql,
+                    prepare=False,
+                )
+
+                logger.info(
+                    "Initialisation SQL : %s",
+                    filename,
+                )
+
+        connection.commit()
+
+@task(retries=1, retry_delay_seconds=5)
 def apply_business_rules():
 
     logger = get_run_logger()
@@ -246,11 +281,15 @@ def monitor_volumes():
     name="sport-data-pipeline",
     log_prints=True,
 )
+
 def sport_data_pipeline():
 
     print(
         "======= SPORT DATA PIPELINE ======="
     )
+
+    # 0. Initialisation PostgreSQL
+    initialize_database()
 
     # 1. Audit des sources
     run_python_script(

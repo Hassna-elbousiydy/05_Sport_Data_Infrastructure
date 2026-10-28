@@ -39,6 +39,64 @@ connection = psycopg.connect(
     password=os.getenv("POSTGRES_PASSWORD"),
 )
 
+with connection.cursor() as cursor:
+
+    cursor.execute(
+        """
+        SELECT parameter_name, parameter_value
+        FROM poc_parameters
+        WHERE parameter_name IN (
+            'walking_running_max_km',
+            'bike_other_max_km'
+        );
+        """
+    )
+
+    parameters = {
+        name: float(value)
+        for name, value in cursor.fetchall()
+    }
+
+
+walking_running_max_km = parameters[
+    "walking_running_max_km"
+]
+
+bike_other_max_km = parameters[
+    "bike_other_max_km"
+]
+
+
+# RECALCUL DES VALIDATIONS AVEC LES DISTANCES DEJA STOCKEES
+
+with connection.cursor() as cursor:
+
+    cursor.execute(
+        """
+        UPDATE rh_employees
+        SET commute_is_valid =
+            CASE
+                WHEN commute_mode = 'Marche/running'
+                    THEN commute_distance_km <= %s
+
+                WHEN commute_mode = 'Vélo/Trottinette/Autres'
+                    THEN commute_distance_km <= %s
+
+                ELSE NULL
+            END
+        WHERE commute_distance_km IS NOT NULL
+          AND commute_mode IN (
+              'Marche/running',
+              'Vélo/Trottinette/Autres'
+          );
+        """,
+        (
+            walking_running_max_km,
+            bike_other_max_km,
+        ),
+    )
+
+connection.commit()
 
  # APPEL GOOGLE ROUTES API
  
@@ -138,11 +196,11 @@ try:
 
         if commute_mode == "Marche/running":
             travel_mode = "WALK"
-            max_distance_km = 15
+            max_distance_km = walking_running_max_km
 
         elif commute_mode == "Vélo/Trottinette/Autres":
             travel_mode = "BICYCLE"
-            max_distance_km = 25
+            max_distance_km = bike_other_max_km
 
         else:
             continue

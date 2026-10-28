@@ -8,6 +8,10 @@ WITH activity_counts AS (
 
     FROM sport_activities
 
+    WHERE start_date >=
+        CURRENT_TIMESTAMP - INTERVAL '12 months'
+    AND start_date <= CURRENT_TIMESTAMP
+
     GROUP BY employee_id
 ),
 

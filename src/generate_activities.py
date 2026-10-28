@@ -15,10 +15,7 @@ load_dotenv()
 random.seed(42)
 
 END_DATE = datetime.now().replace(
-    hour=23,
-    minute=59,
-    second=59,
-    microsecond=0,
+    microsecond=0
 )
 
 START_DATE = END_DATE - timedelta(days=365)
